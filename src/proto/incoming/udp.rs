@@ -15,10 +15,7 @@ pub(crate) struct UdpIncomingStream<'u> {
 impl<'u> UdpIncomingStream<'u> {
     #[inline(always)]
     pub const fn new(buf: &'u [u8]) -> Self {
-        Self {
-            buf,
-            pos: 0usize,
-        }
+        Self { buf, pos: 0usize }
     }
     pub fn parse_one(buf: &'u [u8]) -> UdpIncomingPacket {
         Self::new(buf).next().unwrap()
@@ -32,7 +29,7 @@ impl Iterator for UdpIncomingStream<'_> {
         let len = buf.len();
 
         // Verify there's at least 8 bytes (for the static fields)
-        if len-self.pos <= 8 {
+        if len - self.pos <= 8 {
             return None;
         }
 
@@ -50,13 +47,13 @@ impl Iterator for UdpIncomingStream<'_> {
 
         while self.pos < len {
             let tag_size = buf[self.pos];
-            let tag_id = buf[self.pos+1];
+            let tag_id = buf[self.pos + 1];
             self.pos += 2;
 
             if (self.pos + tag_size as usize) < len {
                 return None;
             }
-            let buf = &buf[self.pos..self.pos+tag_size as usize];
+            let buf = &buf[self.pos..self.pos + tag_size as usize];
             self.pos += tag_size as usize;
 
             match tag_id {
@@ -110,12 +107,17 @@ impl Iterator for UdpIncomingStream<'_> {
 
                     CanMetrics::parse(buf);
                 }
-                _ => {
-                }
+                _ => {}
             }
         }
 
-        Some(UdpIncomingPacket { seqnum, status, trace, battery, need_date })
+        Some(UdpIncomingPacket {
+            seqnum,
+            status,
+            trace,
+            battery,
+            need_date,
+        })
     }
 }
 
@@ -188,10 +190,7 @@ impl RamInfo {
         let block = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
         let free_space = u32::from_be_bytes([buf[4], buf[5], buf[6], buf[7]]);
 
-        Self {
-            block,
-            free_space,
-        }
+        Self { block, free_space }
     }
 }
 

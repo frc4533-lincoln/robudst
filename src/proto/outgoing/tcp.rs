@@ -19,7 +19,15 @@ pub enum TcpOutgoingTag<'t> {
 impl TcpOutgoingTag<'_> {
     pub fn write(self) -> Vec<u8> {
         match self {
-            Self::JoystickDescriptor { index, is_xbox, kind, name, axes, button_count, pov_count } => {
+            Self::JoystickDescriptor {
+                index,
+                is_xbox,
+                kind,
+                name,
+                axes,
+                button_count,
+                pov_count,
+            } => {
                 let mut buf = Vec::new();
                 buf.clear();
 
@@ -29,31 +37,22 @@ impl TcpOutgoingTag<'_> {
                 buf.push(8u8 + name.len() as u8 + axes.len() as u8);
                 buf.push(0x02);
 
-                buf.extend([
-                    index,
-                    is_xbox as u8,
-                    kind as u8,
-                    name.len() as u8,
-                ]);
+                buf.extend([index, is_xbox as u8, kind as u8, name.len() as u8]);
 
                 buf.extend_from_slice(name.as_bytes());
                 buf.push(axes.len() as u8);
                 buf.extend(axes.into_iter().map(|axis| *axis as u8));
-                buf.extend([
-                    button_count,
-                    pov_count,
-                ]);
+                buf.extend([button_count, pov_count]);
 
                 buf
             }
 
-            Self::MatchInfo { competition, match_kind } => {
-                Vec::new()
-            }
+            Self::MatchInfo {
+                competition,
+                match_kind,
+            } => Vec::new(),
 
-            Self::GameData { game_data } => {
-                Vec::new()
-            }
+            Self::GameData { game_data } => Vec::new(),
         }
     }
 }
@@ -61,18 +60,18 @@ impl TcpOutgoingTag<'_> {
 #[derive(Clone, Copy)]
 #[repr(i8)]
 pub enum JoystickKind {
-    Unknown       = -1,
-    XInputUnknown =  0,
-    XInputGamepad     = 1,
-    XInputWheel       = 2,
-    XInputArcade      = 3,
+    Unknown = -1,
+    XInputUnknown = 0,
+    XInputGamepad = 1,
+    XInputWheel = 2,
+    XInputArcade = 3,
     XInputFlightStick = 4,
-    XInputDancePad    = 5,
-    XInputGuitar      = 6,
-    XInputGuitar2     = 7,
-    XInputDrumKit     = 8,
-    XInputGuitar3     = 11,
-    XInputArcadePad   = 19,
+    XInputDancePad = 5,
+    XInputGuitar = 6,
+    XInputGuitar2 = 7,
+    XInputDrumKit = 8,
+    XInputGuitar3 = 11,
+    XInputArcadePad = 19,
     HIDJoystick = 20,
     HIDGamepad = 21,
     HIDDriving = 22,

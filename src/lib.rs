@@ -4,23 +4,36 @@ use std::{net::Ipv4Addr, sync::Arc};
 
 use crossbeam_utils::atomic::AtomicCell;
 use futures_lite::{Stream, StreamExt};
-use proto::{incoming::{tcp::{TcpIncomingTag, TcpTagStream}, udp::{Status, UdpIncomingPacket, UdpIncomingStream}, IncomingTagHandler}, outgoing::{tcp::TcpOutgoingTag, udp::UdpOutgoingPacket}};
-use tokio::{net::{tcp::{OwnedReadHalf, OwnedWriteHalf}, unix::SocketAddr, TcpStream, UdpSocket}, sync::Mutex};
+use proto::{
+    incoming::{
+        IncomingTagHandler,
+        tcp::{TcpIncomingTag, TcpTagStream},
+        udp::{Status, UdpIncomingPacket, UdpIncomingStream},
+    },
+    outgoing::{tcp::TcpOutgoingTag, udp::UdpOutgoingPacket},
+};
+use tokio::{
+    net::{
+        TcpStream, UdpSocket,
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        unix::SocketAddr,
+    },
+    sync::Mutex,
+};
 use utils::{find_status, gen_team_ip};
 
 #[macro_use]
 extern crate tracing;
 #[macro_use]
 extern crate bitflags;
-extern crate tokio;
-extern crate futures_lite;
 extern crate crossbeam_utils;
+extern crate futures_lite;
+extern crate tokio;
 
 pub mod proto;
 mod utils;
 
-pub enum Error {
-}
+pub enum Error {}
 
 #[derive(Clone, Copy)]
 pub enum RobotStatus {
@@ -53,11 +66,11 @@ impl AlliancePos {
             Self::Red(pos) => {
                 assert!(pos != 0 && pos <= 3);
                 pos.saturating_sub(1)
-            },
+            }
             Self::Blue(pos) => {
                 assert!(pos != 0 && pos <= 3);
                 pos.saturating_sub(4)
-            },
+            }
         }
     }
 }
@@ -70,21 +83,25 @@ pub struct Ds {
     battery: AtomicCell<f32>,
     alliance_pos: AtomicCell<AlliancePos>,
     //
-
     rio_tcp_rx: Arc<Mutex<OwnedReadHalf>>,
     rio_tcp_tx: Arc<Mutex<OwnedWriteHalf>>,
     rio_incoming_udp: Arc<Mutex<UdpSocket>>,
     rio_outgoing_udp: Arc<Mutex<UdpSocket>>,
-
 }
 impl Ds {
     pub async fn init(team_number: u16) -> Self {
         let rio_ip = gen_team_ip(team_number).unwrap();
 
-        let (rio_tcp_rx, rio_tcp_tx) = TcpStream::connect(format!("{rio_ip}:1150")).await.unwrap().into_split();
+        let (rio_tcp_rx, rio_tcp_tx) = TcpStream::connect(format!("{rio_ip}:1150"))
+            .await
+            .unwrap()
+            .into_split();
         let rio_incoming_udp = UdpSocket::bind("0.0.0.0:1150").await.unwrap();
         let rio_outgoing_udp = UdpSocket::bind("0.0.0.0:0").await.unwrap();
-        rio_outgoing_udp.connect(format!("{rio_ip}:1110")).await.unwrap();
+        rio_outgoing_udp
+            .connect(format!("{rio_ip}:1110"))
+            .await
+            .unwrap();
 
         Ds {
             status: AtomicCell::new(RobotStatus::NoCommunication),
@@ -140,18 +157,33 @@ impl Ds {
     pub async fn reboot_rio(&self) {
         let mut pkt = UdpOutgoingPacket::build(self);
         pkt.reboot_rio();
-        self.rio_outgoing_udp.lock().await.send(&pkt.write()).await.unwrap();
+        self.rio_outgoing_udp
+            .lock()
+            .await
+            .send(&pkt.write())
+            .await
+            .unwrap();
     }
 
     /// Issue a command to restart the robot code
     pub async fn restart_code(&self) {
         let mut pkt = UdpOutgoingPacket::build(self);
         pkt.restart_code();
-        self.rio_outgoing_udp.lock().await.send(&pkt.write()).await.unwrap();
+        self.rio_outgoing_udp
+            .lock()
+            .await
+            .send(&pkt.write())
+            .await
+            .unwrap();
     }
 
     async fn send_udp(&self) {
-        self.rio_outgoing_udp.lock().await.send(&UdpOutgoingPacket::build(self).write()).await.unwrap();
+        self.rio_outgoing_udp
+            .lock()
+            .await
+            .send(&UdpOutgoingPacket::build(self).write())
+            .await
+            .unwrap();
     }
 
     async fn send_tcp(&self, tag: TcpOutgoingTag<'_>) {

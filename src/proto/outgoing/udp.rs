@@ -62,7 +62,7 @@ impl UdpOutgoingPacket<'_> {
         buf.push(self.control.bits());
         buf.push(self.req.bits());
         buf.push(self.alliance.to_pos());
-        
+
         for tag in self.tags {
             match tag {
                 UdpOutgoingTag::Countdown { countdown: _ } => {
@@ -70,12 +70,24 @@ impl UdpOutgoingPacket<'_> {
                     buf.extend_from_slice(&[tag.len() as u8, 0x07]);
                     buf.extend(tag);
                 }
-                UdpOutgoingTag::Joystick { axes: _, buttons: _, povs: _ } => {
+                UdpOutgoingTag::Joystick {
+                    axes: _,
+                    buttons: _,
+                    povs: _,
+                } => {
                     let tag = tag.write();
                     buf.extend_from_slice(&[tag.len() as u8, 0x0C]);
                     buf.extend(tag);
                 }
-                UdpOutgoingTag::Date { microseconds: _, second: _, minute: _, hour: _, day: _, month: _, year: _ } => {
+                UdpOutgoingTag::Date {
+                    microseconds: _,
+                    second: _,
+                    minute: _,
+                    hour: _,
+                    day: _,
+                    month: _,
+                    year: _,
+                } => {
                     let tag = tag.write();
                     buf.extend_from_slice(&[tag.len() as u8, 0x0F]);
                     buf.extend(tag);
@@ -135,10 +147,12 @@ pub enum UdpOutgoingTag<'u> {
 impl<'u> UdpOutgoingTag<'u> {
     pub fn write(&self) -> Vec<u8> {
         match self {
-            UdpOutgoingTag::Countdown { countdown } => {
-                countdown.to_be_bytes().to_vec()
-            }
-            UdpOutgoingTag::Joystick { axes, buttons, povs } => {
+            UdpOutgoingTag::Countdown { countdown } => countdown.to_be_bytes().to_vec(),
+            UdpOutgoingTag::Joystick {
+                axes,
+                buttons,
+                povs,
+            } => {
                 let mut buf = Vec::new();
                 buf.clear();
 
@@ -161,12 +175,16 @@ impl<'u> UdpOutgoingTag<'u> {
 
                 buf
             }
-            UdpOutgoingTag::Date { microseconds, second, minute, hour, day, month, year } => {
-                Vec::new()
-            }
-            UdpOutgoingTag::Timezone { timezone } => {
-                timezone.as_bytes().to_vec()
-            }
+            UdpOutgoingTag::Date {
+                microseconds,
+                second,
+                minute,
+                hour,
+                day,
+                month,
+                year,
+            } => Vec::new(),
+            UdpOutgoingTag::Timezone { timezone } => timezone.as_bytes().to_vec(),
         }
     }
 }

@@ -1,7 +1,7 @@
-use bytes::Buf;
-use tracing::Level;
-use std::str;
 use crate::Error;
+use bytes::Buf;
+use std::str;
+use tracing::Level;
 
 use super::IncomingTagHandler;
 
@@ -28,10 +28,7 @@ pub struct TcpTagStream<'t> {
 impl<'t> TcpTagStream<'t> {
     #[inline(always)]
     pub const fn new(buf: &'t [u8]) -> Self {
-        Self {
-            buf,
-            pos: 0usize,
-        }
+        Self { buf, pos: 0usize }
     }
 }
 impl<'t> Iterator for TcpTagStream<'t> {
@@ -41,7 +38,7 @@ impl<'t> Iterator for TcpTagStream<'t> {
         let buf = self.buf;
         let len = buf.len();
 
-        if len-self.pos < 2 {
+        if len - self.pos < 2 {
             return None;
         }
 
@@ -64,9 +61,7 @@ impl<'t> Iterator for TcpTagStream<'t> {
                 }
 
                 // Usage report
-                0x01 => {
-                    Some(TcpIncomingTag::UsageReport)
-                }
+                0x01 => Some(TcpIncomingTag::UsageReport),
 
                 // Disable faults
                 0x04 => {
@@ -134,10 +129,7 @@ impl DisableFaults {
         let comms = u16::from_be_bytes([buf[0], buf[1]]);
         let pwr12v = u16::from_be_bytes([buf[2], buf[3]]);
 
-        Self {
-            comms,
-            pwr12v,
-        }
+        Self { comms, pwr12v }
     }
 }
 impl IncomingTagHandler<'_> for DisableFaults {
@@ -184,22 +176,32 @@ impl<'v> VersionInfo<'v> {
         let ty = buf[0];
         let id = buf[3];
         let name_len = buf[4] as usize;
-        let name = core::str::from_utf8(&buf[5..=5+name_len]);
-        let version_len = buf[6+name_len] as usize;
-        let version = core::str::from_utf8(&buf[7+name_len..=7+name_len+version_len]);
+        let name = core::str::from_utf8(&buf[5..=5 + name_len]);
+        let version_len = buf[6 + name_len] as usize;
+        let version = core::str::from_utf8(&buf[7 + name_len..=7 + name_len + version_len]);
 
         Self {
             ty,
             id,
             name: if let Ok(name) = name { name } else { "" },
-            version: if let Ok(version) = version { version } else { "" },
+            version: if let Ok(version) = version {
+                version
+            } else {
+                ""
+            },
         }
     }
 }
 impl<'v> IncomingTagHandler<'_> for VersionInfo<'v> {
     fn handle(&self, _ds: &crate::Ds) {
         // TODO: properly share this with the library consumer
-        event!(Level::INFO, r#type = self.ty, id = self.id, name = self.name, version = self.version);
+        event!(
+            Level::INFO,
+            r#type = self.ty,
+            id = self.id,
+            name = self.name,
+            version = self.version
+        );
     }
 }
 
@@ -219,13 +221,37 @@ impl<'e> ErrorMessage<'e> {
         let timestamp = f32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
         let seqnum = u16::from_be_bytes([buf[4], buf[5]]);
         let error_code = i32::from_be_bytes([buf[8], buf[9], buf[10], buf[11]]);
-        let flags = if let Some(flags) = ErrorMsgFlags::from_bits(buf[12]) { flags } else { ErrorMsgFlags::empty() };
+        let flags = if let Some(flags) = ErrorMsgFlags::from_bits(buf[12]) {
+            flags
+        } else {
+            ErrorMsgFlags::empty()
+        };
         let details_len = u16::from_be_bytes([buf[13], buf[14]]) as usize;
-        let details = if let Ok(details) = core::str::from_utf8(&buf[15..15 + details_len]) { details } else { "" };
-        let location_len = u16::from_be_bytes([buf[15 + details_len], buf[16 + details_len]]) as usize;
-        let location = if let Ok(location) = core::str::from_utf8(&buf[17 + details_len..17 + details_len + location_len]) { location } else { "" };
-        let call_stack_len = u16::from_be_bytes([buf[17 + details_len + location_len], buf[18 + details_len + location_len]]) as usize;
-        let call_stack = if let Ok(call_stack) = core::str::from_utf8(&buf[19 + details_len + location_len..19 + details_len + location_len + call_stack_len]) { call_stack } else { "" };
+        let details = if let Ok(details) = core::str::from_utf8(&buf[15..15 + details_len]) {
+            details
+        } else {
+            ""
+        };
+        let location_len =
+            u16::from_be_bytes([buf[15 + details_len], buf[16 + details_len]]) as usize;
+        let location = if let Ok(location) =
+            core::str::from_utf8(&buf[17 + details_len..17 + details_len + location_len])
+        {
+            location
+        } else {
+            ""
+        };
+        let call_stack_len = u16::from_be_bytes([
+            buf[17 + details_len + location_len],
+            buf[18 + details_len + location_len],
+        ]) as usize;
+        let call_stack = if let Ok(call_stack) = core::str::from_utf8(
+            &buf[19 + details_len + location_len..19 + details_len + location_len + call_stack_len],
+        ) {
+            call_stack
+        } else {
+            ""
+        };
 
         Self {
             timestamp,
@@ -241,9 +267,25 @@ impl<'e> ErrorMessage<'e> {
 impl<'e> IncomingTagHandler<'_> for ErrorMessage<'e> {
     fn handle(&self, _ds: &crate::Ds) {
         if self.flags.contains(ErrorMsgFlags::ERROR) {
-            event!(Level::ERROR, timestamp = self.timestamp, seqnum = self.seqnum, error_code = self.seqnum, details = self.details, location = self.location, call_stack = self.call_stack);
+            event!(
+                Level::ERROR,
+                timestamp = self.timestamp,
+                seqnum = self.seqnum,
+                error_code = self.seqnum,
+                details = self.details,
+                location = self.location,
+                call_stack = self.call_stack
+            );
         } else {
-            event!(Level::WARN, timestamp = self.timestamp, seqnum = self.seqnum, error_code = self.seqnum, details = self.details, location = self.location, call_stack = self.call_stack);
+            event!(
+                Level::WARN,
+                timestamp = self.timestamp,
+                seqnum = self.seqnum,
+                error_code = self.seqnum,
+                details = self.details,
+                location = self.location,
+                call_stack = self.call_stack
+            );
         }
     }
 }
@@ -280,6 +322,11 @@ impl<'s> Stdout<'s> {
 }
 impl<'s> IncomingTagHandler<'_> for Stdout<'s> {
     fn handle(&self, _ds: &crate::Ds) {
-        event!(Level::INFO, self.message, timestamp = self.timestamp, seqnum = self.seqnum);
+        event!(
+            Level::INFO,
+            self.message,
+            timestamp = self.timestamp,
+            seqnum = self.seqnum
+        );
     }
 }

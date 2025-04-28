@@ -20,12 +20,20 @@ pub fn gen_team_ip(team_number: u16) -> Option<Ipv4Addr> {
     if team_number > 25_599 {
         None
     } else {
-        Some(Ipv4Addr::new(10, (team_number / 100) as u8, (team_number % 100) as u8, 2))
+        Some(Ipv4Addr::new(
+            10,
+            (team_number / 100) as u8,
+            (team_number % 100) as u8,
+            2,
+        ))
     }
 }
 
 #[inline(always)]
-pub const fn find_status(status: crate::proto::incoming::udp::Status, trace: crate::proto::incoming::udp::Trace) -> (RobotStatus, RobotCodeMode) {
+pub const fn find_status(
+    status: crate::proto::incoming::udp::Status,
+    trace: crate::proto::incoming::udp::Trace,
+) -> (RobotStatus, RobotCodeMode) {
     assert!(status.is_in_teleop() ^ status.is_in_auto() ^ status.is_in_test());
 
     let mode = if status.is_in_teleop() {
@@ -56,5 +64,3 @@ pub const fn find_status(status: crate::proto::incoming::udp::Status, trace: cra
         (RobotStatus::Disabled, mode)
     }
 }
-
-    
