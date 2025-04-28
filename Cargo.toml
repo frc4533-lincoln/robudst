@@ -1,0 +1,17 @@
+[package]
+name = "robudst"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+std = ["futures-lite/std"]
+alloc = ["futures-lite/alloc"]
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "net", "io-util"] }
+futures-lite = { version = "2.6.0", default-features = false, features = ["race", "futures-io"] }
+bitflags = { version = "2.9.0", features = ["core"] }
+bytes = { version = "1.10.1", default-features = false }
+crossbeam-utils = { version = "0.8.21", default-features = false, features = ["std", "nightly"] }
+tracing = { version = "0.1.41", features = ["log", "async-await"] }
+
