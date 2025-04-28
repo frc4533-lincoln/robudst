@@ -4,7 +4,7 @@ use std::{net::Ipv4Addr, sync::Arc};
 
 use crossbeam_utils::atomic::AtomicCell;
 use futures_lite::{Stream, StreamExt};
-use proto::{incoming::{tcp::{TcpIncomingTag, TcpTagStream}, udp::{Status, UdpIncomingPacket, UdpIncomingStream}, IncomingTagHandler}, outgoing::udp::UdpOutgoingPacket};
+use proto::{incoming::{tcp::{TcpIncomingTag, TcpTagStream}, udp::{Status, UdpIncomingPacket, UdpIncomingStream}, IncomingTagHandler}, outgoing::{tcp::TcpOutgoingTag, udp::UdpOutgoingPacket}};
 use tokio::{net::{tcp::{OwnedReadHalf, OwnedWriteHalf}, unix::SocketAddr, TcpStream, UdpSocket}, sync::Mutex};
 use utils::{find_status, gen_team_ip};
 
@@ -100,34 +100,64 @@ impl Ds {
         }
     }
 
+    /// Get robot status
     #[inline(always)]
     pub fn status(&self) -> RobotStatus {
         self.status.load()
     }
 
+    /// Get robot code mode
     #[inline(always)]
     pub fn mode(&self) -> RobotCodeMode {
         self.mode.load()
     }
 
+    /// Get CAN bus utilization (as percentage)
+    #[inline(always)]
+    pub fn can_bus_util(&self) -> f32 {
+        self.can_bus_util.load()
+    }
+
+    /// Enable the robot code
+    pub async fn enable(&self) {
+        self.status.store(RobotStatus::Enabled);
+        self.send_udp().await;
+    }
+
+    /// Disable the robot code
+    pub async fn disable(&self) {
+        self.status.store(RobotStatus::Disabled);
+        self.send_udp().await;
+    }
+
     /// Trigger an emergency stop
-    pub fn estop(&self) {
+    pub async fn estop(&self) {
         self.status.store(RobotStatus::EStopped);
-        UdpOutgoingPacket::build(self).write();
+        self.send_udp().await;
     }
 
     /// Issue a command to restart the roboRIO
-    pub fn reboot_rio(&self) {
+    pub async fn reboot_rio(&self) {
         let mut pkt = UdpOutgoingPacket::build(self);
         pkt.reboot_rio();
-        pkt.write();
+        self.rio_outgoing_udp.lock().await.send(&pkt.write()).await.unwrap();
     }
 
     /// Issue a command to restart the robot code
-    pub fn restart_code(&self) {
+    pub async fn restart_code(&self) {
         let mut pkt = UdpOutgoingPacket::build(self);
         pkt.restart_code();
-        pkt.write();
+        self.rio_outgoing_udp.lock().await.send(&pkt.write()).await.unwrap();
+    }
+
+    async fn send_udp(&self) {
+        self.rio_outgoing_udp.lock().await.send(&UdpOutgoingPacket::build(self).write()).await.unwrap();
+    }
+
+    async fn send_tcp(&self, tag: TcpOutgoingTag<'_>) {
+        let tcp_tx = self.rio_tcp_tx.lock().await;
+        tcp_tx.writable().await.unwrap();
+        tcp_tx.try_write(&tag.write()).unwrap();
     }
 
     pub async fn run(&self) {
